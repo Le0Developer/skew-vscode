@@ -6,7 +6,7 @@ import * as Skew from "skew";
 function reportErrorsFromServer<T>(callback: () => T): T | null {
   try {
     return callback();
-  } catch (e) {
+  } catch (e: any) {
     const message = (e && e.stack ? e.stack : e) + "";
     connection.console.error("skew: " + message);
     connection.window.showErrorMessage("skew: " + message);

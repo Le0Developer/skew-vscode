@@ -6,7 +6,7 @@ import * as Skew from "skew";
 function reportErrorsFromExtension(callback: () => void): void {
   try {
     callback();
-  } catch (e) {
+  } catch (e: any) {
     const message = (e && e.stack ? e.stack : e) + "";
     console.error("skew: " + message);
     vscode.window.showErrorMessage("skew: " + message);
