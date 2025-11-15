@@ -48,7 +48,10 @@ function findAllFiles(root: string, filter: (entry: string) => boolean) {
   return files;
 }
 
-function gatherInputs(workspaceRoot: string | null, openDocuments: server.TextDocuments): Skew.Source[] {
+function gatherInputs(
+  workspaceRoots: Array<string>,
+  openDocuments: server.TextDocuments,
+): Skew.Source[] {
   const inputs: Skew.Source[] = [];
   const openURIs = new Set<string>();
 
@@ -62,8 +65,10 @@ function gatherInputs(workspaceRoot: string | null, openDocuments: server.TextDo
   }
 
   // Read file contents for all non-open files
-  if (workspaceRoot !== null) {
-    for (const absolute of findAllFiles(workspaceRoot, name => name.endsWith('.sk'))) {
+  for (const workspaceRoot of workspaceRoots) {
+    for (const absolute of findAllFiles(workspaceRoot, (name) =>
+      name.endsWith(".sk"),
+    )) {
       const uri = pathToURI(absolute);
       if (!openURIs.has(uri)) {
         let contents: string;
@@ -90,8 +95,8 @@ function gatherInputs(workspaceRoot: string | null, openDocuments: server.TextDo
 
 function build(builder: Builder): readonly Skew.Diagnostic[] {
   return builder.skew.compile({
-    target: 'js',
-    inputs: gatherInputs(builder.workspaceRoot, builder.openDocuments),
+    target: "js",
+    inputs: gatherInputs(builder.workspaceRoots, builder.openDocuments),
     stopAfterResolve: true,
   }).log.diagnostics;
 }
@@ -172,8 +177,21 @@ function pathToURI(absolute: string): string {
   return 'file://' + absolute.split('/').map(encodeURIComponent).join('/');
 }
 
+function uriToPath(uri: string): string {
+  if (!uri.startsWith("file://")) {
+    throw new Error("Invalid URI: " + uri);
+  }
+
+  const parts = uri
+    .substring("file://".length)
+    .split("/")
+    .map(decodeURIComponent);
+
+  return "/" + path.join(...parts);
+}
+
 class Builder {
-  workspaceRoot: string | null = null;
+  workspaceRoots: Array<string> = [];
   private timeout: any;
 
   constructor(
@@ -247,8 +265,10 @@ builder.openDocuments.listen(connection);
 builder.openDocuments.onDidChangeContent(() => builder.buildLater());
 
 // Grab the workspace when the connection opens
-connection.onInitialize(params => {
-  builder.workspaceRoot = params.rootPath ? params.rootPath : null;
+connection.onInitialize((params) => {
+  builder.workspaceRoots = params.workspaceFolders
+    ? params.workspaceFolders.map((v) => uriToPath(v.uri))
+    : [];
   builder.buildLater();
   return {
     capabilities: {
