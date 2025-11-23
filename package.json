@@ -33,6 +33,10 @@
         "extensions": [
           ".sk"
         ],
+        "icon": {
+          "light": "./icon.png",
+          "dark": "./icon.png"
+        },
         "configuration": "./skew.configuration.json"
       }
     ],
